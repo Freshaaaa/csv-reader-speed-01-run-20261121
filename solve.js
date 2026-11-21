@@ -65,6 +65,10 @@ export function run(input) {
       line++;
     } else {
       fields = [];
+      // End of the line the record starts on. Unquoted fields reuse it
+      // instead of searching for '\n' again; it is refreshed only when a
+      // quoted field has carried the scan past it (pos > lineEnd).
+      let lineEnd = text.indexOf('\n', pos);
       let ended = 0; // 0 = comma (read another field), 1 = break, 2 = end
 
     do {
@@ -303,18 +307,23 @@ export function run(input) {
       // ---------- unquoted field ----------
       isQuoted = false;
       {
+        if (lineEnd !== -1 && pos > lineEnd) lineEnd = text.indexOf('\n', pos);
         const ci = text.indexOf(',', pos);
-        const ni = text.indexOf('\n', pos);
         let end;
         let kind;
-        if (ci === -1 && ni === -1) {
-          end = n;
-          kind = 2;
-        } else if (ni === -1 || (ci !== -1 && ci < ni)) {
+        if (lineEnd === -1) {
+          if (ci === -1) {
+            end = n;
+            kind = 2;
+          } else {
+            end = ci;
+            kind = 0;
+          }
+        } else if (ci !== -1 && ci < lineEnd) {
           end = ci;
           kind = 0;
         } else {
-          end = ni;
+          end = lineEnd;
           kind = 1;
         }
         let spanEnd = end;

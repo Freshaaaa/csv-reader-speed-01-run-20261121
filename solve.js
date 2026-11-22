@@ -84,51 +84,17 @@ export function run(input) {
         for (;;) {
           const q = text.indexOf('"', p);
           if (q === -1) break; // never closes
-          if (text.charCodeAt(q + 1) === 34) {
-            // Doubled quote: chunk [p, q) plus one literal quote.
-            const s = text.slice(p, q);
-            if (s.indexOf('\n') === -1 && s.indexOf('\r') === -1) {
-              value += s;
-            } else if (s.indexOf('\r') === -1) {
-              let c = 0;
-              let k = 0;
-              for (;;) {
-                const j = s.indexOf('\n', k);
-                if (j === -1) break;
-                c++;
-                k = j + 1;
-              }
-              line += c;
-              value += s;
-            } else {
-              let out = '';
-              let k = 0;
-              const m = s.length;
-              while (k < m) {
-                const ch = s.charCodeAt(k);
-                if (ch === 13) {
-                  out += '\n';
-                  line++;
-                  k += s.charCodeAt(k + 1) === 10 ? 2 : 1;
-                } else {
-                  if (ch === 10) line++;
-                  out += s[k];
-                  k++;
-                }
-              }
-              value += out;
-            }
-            value += '"';
-            p = q + 2;
-            continue;
-          }
-          // Closing quote: chunk [p, q).
+          const doubled = text.charCodeAt(q + 1) === 34;
+          // One chunk [p, q): the newline/CR positions are found once and
+          // reused (the old code re-scanned for '\r' in the second branch).
           const s = text.slice(p, q);
-          if (s.indexOf('\n') === -1 && s.indexOf('\r') === -1) {
+          const ni = s.indexOf('\n');
+          const ri = s.indexOf('\r');
+          if (ni === -1 && ri === -1) {
             value += s;
-          } else if (s.indexOf('\r') === -1) {
-            let c = 0;
-            let k = 0;
+          } else if (ri === -1) {
+            let c = 1;
+            let k = ni + 1;
             for (;;) {
               const j = s.indexOf('\n', k);
               if (j === -1) break;
@@ -154,6 +120,12 @@ export function run(input) {
               }
             }
             value += out;
+          }
+          if (doubled) {
+            // Doubled quote: one literal quote, keep scanning.
+            value += '"';
+            p = q + 2;
+            continue;
           }
           p = q + 1;
           closed = true;
